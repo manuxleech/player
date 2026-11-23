@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><b>Movie</b>Hub</a> <span style="color:var(--muted)">admin</span>
+  <span class="grow"></span>
+  <button class="btn alt sm" id="logout" hidden>Log out</button>
+</header>
+
+<div class="wrap">
+  <!-- login -->
+  <section class="box" id="loginBox" hidden style="max-width:420px;margin:40px auto">
+    <h3>Admin login</h3>
+    <form id="loginForm">
+      <label class="f" for="pw">Password</label>
+      <input class="t" id="pw" type="password" autocomplete="current-password" required>
+      <div class="row"><button class="btn" type="submit">Log in</button></div>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <!-- panel -->
+  <div id="panel" hidden>
+    <div class="note" id="memNote" hidden>
+      No database is connected, so movies cannot be saved. In Cloudflare: Pages project &rarr; Settings &rarr; Bindings &rarr; add a <b>KV namespace</b> named <b>MOVIES</b>, then redeploy.
+    </div>
+
+    <section class="box">
+      <h3>Add a movie</h3>
+      <form id="addForm">
+        <label class="f" for="name">Movie name</label>
+        <input class="t" id="name" maxlength="200" required placeholder="e.g. Happy Birthday">
+        <label class="f" for="link">Link (the master.m3u8 link, or the folder link that contains it)</label>
+        <input class="t" id="link" required placeholder="https://raw.githubusercontent.com/you/repo/main/movie1/master.m3u8">
+        <div class="row"><button class="btn" type="submit">Add movie</button><span class="err" id="addErr"></span></div>
+      </form>
+    </section>
+
+    <section class="box">
+      <h3>Movies <span style="color:var(--muted);font-weight:500" id="count"></span></h3>
+      <table>
+        <thead><tr><th>Name</th><th>Link</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p class="err" id="listErr"></p>
+    </section>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <form id="editForm" method="dialog">
+    <h3 style="margin-top:0">Edit movie</h3>
+    <label class="f" for="eName">Movie name</label>
+    <input class="t" id="eName" maxlength="200" required>
+    <label class="f" for="eLink">Link</label>
+    <input class="t" id="eLink" required>
+    <div class="row"><button class="btn" type="submit" value="save">Save</button><button class="btn alt" type="button" id="eCancel">Cancel</button><span class="err" id="eErr"></span></div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); };
+  function api(op, body) {
+    return fetch('/api/admin?op=' + op, {
+      method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body)
+    }).then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || 'Error'); e.status = r.status; throw e; } return j; }); });
+  }
+  function show(loggedIn) {
+    $('loginBox').hidden = loggedIn; $('panel').hidden = !loggedIn; $('logout').hidden = !loggedIn;
+    if (loggedIn) load(); else $('pw').focus();
+  }
+  function load() {
+    $('listErr').textContent = '';
+    api('list').then(function (list) {
+      $('count').textContent = '(' + list.length + ')';
+      var tb = $('rows'); tb.textContent = '';
+      if (!list.length) { var tr = document.createElement('tr'); var td = document.createElement('td'); td.colSpan = 3; td.className = 'link'; td.textContent = 'No movies yet.'; tr.appendChild(td); tb.appendChild(tr); }
+      list.forEach(function (m) {
+        var tr = document.createElement('tr');
+        var a = document.createElement('td'); a.textContent = m.name; a.style.fontWeight = '650';
+        var l = document.createElement('td'); l.className = 'link'; l.textContent = m.link; l.title = m.link;
+        var c = document.createElement('td'); c.className = 'act';
+        function b(txt, cls, fn) { var x = document.createElement('button'); x.className = 'btn sm ' + cls; x.textContent = txt; x.onclick = fn; c.appendChild(x); }
+        b('Open', 'alt', function () { window.open('/watch/' + m.id, '_blank'); });
+        b('Copy link', 'alt', function (ev) {
+          var u = location.origin + '/watch/' + m.id, t = ev.target;
+          (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(function () { t.textContent = 'Copied'; setTimeout(function () { t.textContent = 'Copy link'; }, 1200); }, function () { prompt('Copy this link', u); });
+        });
+        b('Test', 'alt', function (ev) {
+          var t = ev.target; t.textContent = 'Testing...';
+          api('test', { id: m.id }).then(function (r) {
+            t.textContent = 'Test';
+            alert((r.ok && r.isPlaylist ? 'OK - the source works.\n' : 'PROBLEM\n') +
+              'Asked for: ' + r.requested + '\nAnswer: HTTP ' + r.status +
+              (r.isPlaylist ? '\nQualities: ' + r.qualities + ', audio tracks: ' + r.audioTracks : '') +
+              '\n\nSource said: ' + r.body);
+          }, function (e) { t.textContent = 'Test'; alert(e.message); });
+        });
+        b('Edit', 'alt', function () { edit(m); });
+        b('Delete', 'danger', function () { if (confirm('Delete "' + m.name + '"?')) api('delete', { id: m.id }).then(load, function (e) { $('listErr').textContent = e.message; }); });
+        tr.appendChild(a); tr.appendChild(l); tr.appendChild(c); tb.appendChild(tr);
+      });
+    }).catch(function (e) { if (e.status === 401) show(false); else $('listErr').textContent = e.message; });
+  }
+  var editing = null;
+  function edit(m) { editing = m; $('eName').value = m.name; $('eLink').value = m.link; $('eErr').textContent = ''; $('dlg').showModal(); }
+  $('eCancel').onclick = function () { $('dlg').close(); };
+  $('editForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    api('update', { id: editing.id, name: $('eName').value, link: $('eLink').value }).then(function () { $('dlg').close(); load(); }, function (er) { $('eErr').textContent = er.message; });
+  });
+  $('addForm').addEventListener('submit', function (e) {
+    e.preventDefault(); $('addErr').textContent = '';
+    api('add', { name: $('name').value, link: $('link').value }).then(function () { $('name').value = ''; $('link').value = ''; load(); $('name').focus(); },
+      function (er) { $('addErr').textContent = er.message; });
+  });
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault(); $('loginErr').textContent = '';
+    api('login', { password: $('pw').value }).then(function () { $('pw').value = ''; boot(); }, function (er) { $('loginErr').textContent = er.message; });
+  });
+  $('logout').onclick = function () { api('logout', {}).then(function () { show(false); }); };
+  function boot() {
+    api('me').then(function (m) { $('memNote').hidden = m.storage !== 'memory'; show(m.admin); }, function () { show(false); });
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
