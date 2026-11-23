@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Movies</title>
+<meta name="theme-color" content="#0b0b10">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><b>Movie</b>Hub</a>
+  <span class="grow"></span>
+  <input class="search" id="q" type="search" placeholder="Search movies" aria-label="Search movies" autocomplete="off">
+</header>
+<main>
+  <h2 class="sec">All movies</h2>
+  <div class="grid" id="grid" role="list"></div>
+  <p class="empty" id="empty" hidden></p>
+</main>
+<script>
+(function () {
+  var grid = document.getElementById('grid'), empty = document.getElementById('empty'), q = document.getElementById('q');
+  var all = [];
+  function hue(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
+  function initials(s) {
+    var w = s.trim().split(/\s+/).filter(Boolean);
+    return ((w[0] || '?')[0] + (w.length > 1 ? w[1][0] : '')).toUpperCase();
+  }
+  function render() {
+    var term = q.value.trim().toLowerCase();
+    var list = all.filter(function (m) { return m.name.toLowerCase().indexOf(term) !== -1; });
+    grid.textContent = '';
+    list.forEach(function (m) {
+      var a = document.createElement('a');
+      a.className = 'card'; a.href = '/watch/' + m.id; a.setAttribute('role', 'listitem');
+      var art = document.createElement('div'); art.className = 'art';
+      var h = hue(m.name);
+      art.style.background = 'linear-gradient(135deg,hsl(' + h + ' 70% 38%),hsl(' + ((h + 50) % 360) + ' 75% 22%))';
+      art.textContent = initials(m.name);
+      var p = document.createElement('span'); p.className = 'play';
+      p.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+      art.appendChild(p);
+      var n = document.createElement('div'); n.className = 'nm'; n.textContent = m.name;
+      a.appendChild(art); a.appendChild(n); grid.appendChild(a);
+    });
+    empty.hidden = list.length > 0;
+    empty.textContent = all.length ? 'No movie matches your search.' : 'No movies yet. Please check back soon.';
+  }
+  q.addEventListener('input', render);
+  fetch('/api/movies').then(function (r) { return r.json(); }).then(function (d) {
+    all = Array.isArray(d) ? d : []; render();
+    var first = grid.querySelector('a'); if (first && !('ontouchstart' in window)) first.focus({ preventScroll: true });
+  }).catch(function () { empty.hidden = false; empty.textContent = 'Could not load movies. Please refresh.'; });
+})();
+</script>
+</body>
+</html>

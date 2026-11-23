@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Playing…</title>
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="watch">
+  <div class="player" id="player">
+    <video id="v" playsinline webkit-playsinline preload="auto" tabindex="-1"></video>
+
+    <div class="ptop" id="ptop">
+      <a class="back" href="/" id="back" aria-label="Back to movies"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></a>
+      <h1 id="title">Loading…</h1>
+    </div>
+
+    <div class="center"><div class="spinner" id="spin"></div></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="bar" id="bar">
+      <div class="seekrow">
+        <span class="time" id="cur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" step="any" value="0" aria-label="Seek">
+        <span class="time r" id="dur">0:00</span>
+      </div>
+      <div class="btns">
+        <button class="ib" id="play" aria-label="Play"></button>
+        <button class="ib skip" id="back10" aria-label="Back 10 seconds"></button>
+        <button class="ib skip f" id="fwd10" aria-label="Forward 10 seconds"></button>
+        <span class="vol">
+          <button class="ib" id="mute" aria-label="Mute"></button>
+          <input type="range" id="vol" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+        </span>
+        <span class="sp"></span>
+        <span class="menuwrap" id="audioWrap">
+          <button class="ib txt" id="audioBtn" aria-haspopup="true" aria-expanded="false"></button>
+          <div class="menu" id="audioMenu" role="menu" hidden></div>
+        </span>
+        <span class="menuwrap" id="qualWrap">
+          <button class="ib txt" id="qualBtn" aria-haspopup="true" aria-expanded="false"></button>
+          <div class="menu" id="qualMenu" role="menu" hidden></div>
+        </span>
+        <button class="ib" id="fs" aria-label="Fullscreen"></button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/hls.min.js"></script>
+<script src="/player.js"></script>
+</body>
+</html>
